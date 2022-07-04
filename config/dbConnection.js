@@ -1,55 +1,40 @@
-import { set, connect, connection } from 'mongoose';
-require('dotenv').config({ path: 'src/config/.env' });
-import { redBright, greenBright } from 'chalk';
-
+import { set, connect, connection } from "mongoose";
+import dotenv from "dotenv";
+dotenv.config({ path: "config/.env" });
 // Database Name & URL
 const DATABASE_NAME = process.env.DATABASE_NAME;
 export const CONNECTION_URL = process.env.CONNECTION_URL + DATABASE_NAME;
 
-const connectMongoDB = async () => {
-	try {
-		set('useCreateIndex', true);
+(async () => {
+  try {
+    //Connection establishment
+    connect(CONNECTION_URL, {
+      useNewUrlParser: true,
+      useUnifiedTopology: true,
+    });
 
-		//for making use of findOneAndUpdate else it will not work
-		set('useFindAndModify', false);
+    const db = connection;
 
-		//Connection establishment
-		connect(CONNECTION_URL, {
-			useNewUrlParser: true,
-			useCreateIndex: true,
-			useUnifiedTopology: true,
-		});
+    // Event Listener
+    db.on("disconnected", (err) => {
+      console.error(`MongoDB-> disconnected: ${DATABASE_NAME}`);
+    });
 
-		const db = connection;
+    db.on("reconnected", (err) => {
+      console.info(`MongoDB-> reconnected: ${DATABASE_NAME}`);
+    });
 
-		// Event Listener
-		db.on('disconnected', (_err) => {
-			console.error(redBright(`MongoDB-> disconnected: ${DATABASE_NAME}`));
-			connectMongoDB();
-		});
+    db.on("error", (error) => {
+      console.error(("Error occured in db connection", error));
+    });
 
-		db.on('reconnected', (_err) => {
-			console.info(greenBright(`MongoDB-> reconnected: ${DATABASE_NAME}`));
-		});
-
-		db.on('error', (error) => {
-			console.error(redBright('Error occured in db connection', error));
-			throw new Error('Error occured in db connection');
-		});
-
-		db.on('open', () => {
-			console.info(
-				greenBright(
-					`DB Connection with ${DATABASE_NAME} established successfully.`,
-				),
-			);
-		});
-	} catch (error) {
-		console.error(redBright('Error occured in db connection', error));
-		process.exit(-1);
-	}
-};
-
-connectMongoDB();
-
-export default connectMongoDB;
+    db.on("open", () => {
+      console.info(
+        `DB Connection with ${DATABASE_NAME} established successfully.`
+      );
+    });
+  } catch (error) {
+    console.error(("Error occured in db connection", error));
+    process.exit(-1);
+  }
+})();

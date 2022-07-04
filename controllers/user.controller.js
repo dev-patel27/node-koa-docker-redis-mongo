@@ -1,13 +1,13 @@
 import { userModel } from "../models";
 import { userRepository } from "../repositories";
-import { hashPassword, comparePassword, jwtToken, sendMail } from "../utils";
+import { hashPassword, comparePassword, jwtToken, sendMail, generateRandomString } from "../utils";
+import { passwordAlgorithm, saltRounds } from "../utils/hashPassword";
 
-const signup = async (req, res) => {
+const signup = async (ctx, _next) => {
   try {
-    let { body } = req;
-    const { password, name, email } = body;
-    let message;
-    const query = { orQuery: true, name, email };
+    let { body } = ctx.request;
+    const { password, email } = body;
+    const query = { email };
 
     const checkExistingUser = await userRepository.userQuery(query);
 
@@ -17,29 +17,36 @@ const signup = async (req, res) => {
 
     const data = {
       ...body,
-      password: hashed,
+      password_hash: hashed,
+      password_algo: passwordAlgorithm,
+      password_salt: saltRounds,
     };
 
     const user = new userModel(data);
     const saveUser = await user.save();
 
     if (!saveUser) throw new Error("Error While Saving User");
-    saveUser &&
-      res.status(200).send({
+    if (saveUser) {
+      ctx.status = 200;
+      ctx.body = {
         success: true,
-        message,
-      });
+        message: "User created successfully...",
+        data: saveUser,
+      };
+    }
   } catch (error) {
-    res.status(400).send({
+    ctx.status = 400;
+    ctx.body = {
       success: false,
       message: error.message,
-    });
+      error: JSON.stringify(error),
+    };
   }
 };
 
-const login = async (req, res) => {
+const login = async (ctx, _next) => {
   try {
-    const { body } = req;
+    const { body } = ctx.request;
     const { email, password } = body;
 
     const checkUser = await userRepository.userQuery({ email });
@@ -54,77 +61,59 @@ const login = async (req, res) => {
 
       const verifyPassword = await comparePassword(
         password,
-        checkUser.password
+        checkUser.password_hash
       );
 
       if (!verifyPassword) throw new Error("Email or Password is incorrect");
 
       const token = jwtToken.generateJWTToken(_id);
-      verifyPassword &&
-        res.status(200).send({
+      if (verifyPassword) {
+        ctx.status = 200;
+        ctx.body = {
           success: true,
           data: { token },
           message: `${first_name} ${last_name} Login Successfully`,
-        });
+        };
+      }
     }
   } catch (error) {
-    res.status(400).send({
+    ctx.status = 400;
+    ctx.body = {
       success: false,
       message: error.message,
-    });
+      error: JSON.stringify(error),
+    };
   }
 };
 
-const getAllUsers = async (req, res) => {
+const getAllUsers = async (ctx, _next) => {
   try {
-    const { query } = req;
+    const { query } = ctx.request;
     const { totalCount, users } = await userRepository.findAllQuery(query);
 
-    res.status(200).send({
+    ctx.status = 200;
+    ctx.body = {
       success: true,
       data: users,
       totalCount,
-    });
+    };
   } catch (error) {
-    res.status(400).send({
+    console.log(error);
+    ctx.status = 400;
+    ctx.body = {
       success: false,
       message: error.message,
-    });
+      error: JSON.stringify(error),
+    };
   }
 };
 
-const updateUsers = async (req, res) => {
-  try {
-    const { body } = req;
-    const { _id } = body;
-
-    const filter = { _id };
-    const update = { ...req.body };
-
-    const updateUser = await userRepository.userFindOneUpdateQuery(
-      filter,
-      update
-    );
-
-    res.status(200).send({
-      success: true,
-      data: updateUser,
-      message: "User Updated Successfully.",
-    });
-  } catch (error) {
-    res.status(400).send({
-      success: false,
-      message: error.message,
-    });
-  }
-};
-
-const changePassword = async (req, res) => {
+const changePassword = async (ctx, _next) => {
   try {
     const {
       body,
       currentUser: { _id, password: userPassword },
-    } = req;
+    } = ctx.request;
     const { password, newPassword } = body;
 
     const verifyPassword = await comparePassword(password, userPassword);
@@ -133,43 +122,46 @@ const changePassword = async (req, res) => {
     const hashed = await hashPassword(newPassword);
 
     const filter = { _id };
-    const update = { password: hashed };
+    const update = { password_hash: hashed };
 
     await userRepository.updateOneQuery(filter, update);
 
-    res.status(200).send({
+    ctx.status = 200;
+    ctx.body = {
       success: true,
       message: "Password Updated Successfully.",
-    });
+    };
   } catch (error) {
-    errorLogger(error.message, req.originalUrl);
-    res.status(400).send({
+    // errorLogger(error.message, req.originalUrl);
+    ctx.status = 400;
+    ctx.body = {
       success: false,
       message: error.message,
-    });
+      error: JSON.stringify(error),
+    };
   }
 };
 
-const forgotPassword = async (req, res) => {
+const forgotPassword = async (ctx, _next) => {
   try {
-    const { email } = req.body;
+    const { email } = ctx.request.body;
     const checkUser = await userRepository.userQuery({ email });
 
     if (!checkUser) throw new Error("User Not Found With That Email");
 
     if (checkUser) {
-      const token = generateRandomString(10, "url-safe");
+      const token = generateRandomString(21);
 
       const date = new Date();
-      const expTime = date.getTime() + 60000; // 10 Min
+      const password_reset_expiry = date.getTime() + 60000; // 10 Min
 
       const filter = { email };
-      const update = { token, expTime };
+      const update = { password_reset_token: token, password_reset_expiry };
 
       await userRepository.updateOneQuery(filter, update);
 
       const html = `Click here to Reset Password :
-				${process.env.HOST}?token=${token}
+				${process.env.HOST}?token=${token}&expiredAt=${password_reset_expiry}
 				Link will expire in 10 min`;
 
       const sendEmail = await sendMail(
@@ -183,39 +175,40 @@ const forgotPassword = async (req, res) => {
         const error = sendGridErrors.map((err) => err.message);
         throw new Error(`SendGrid Error: ${error}`);
       }
-      res.status(200).send({
+      ctx.status = 200;
+      ctx.body = {
         success: true,
         message: `Password Reset Link Sent Successfully at ${email}`,
-      });
+      };
     }
   } catch (error) {
-    errorLogger(error.message, req.originalUrl);
-    res.status(400).send({
+    // errorLogger(error.message, req.originalUrl);
+    ctx.status = 400;
+    ctx.body = {
       success: false,
       message: error.message,
-    });
+      error: JSON.stringify(error),
+    };
   }
 };
 
-const resetPassword = async (req, res) => {
+const resetPassword = async (ctx, _next) => {
   try {
-    const {
-      body,
-      currentUser: { _id, token: userToken, expTime },
-      query,
-    } = req;
+    const { body, query } = ctx.request;
     const { password } = body;
-    const { token } = query;
+    const { token, expiredAt } = query;
 
     if (!token) throw new Error("Invalid Token");
 
     // Check token expired or not
-    const checkTokenExpiry = expTime < Date.now();
+    const checkTokenExpiry = expiredAt < Date.now();
 
     if (checkTokenExpiry) throw new Error("Link Expired");
 
     // Check token exists or not && token belongs to that user
-    const checkUserToken = token === userToken;
+    const checkUserToken = await userRepository.userQuery({
+      password_reset_token: token,
+    });
 
     if (!checkUserToken) throw new Error("Invalid Token");
 
@@ -223,25 +216,35 @@ const resetPassword = async (req, res) => {
       const hashed = await hashPassword(password);
 
       const filter = { _id };
-      const update = { $set: { password: hashed, token: null, expTime: null } };
+      const update = {
+        $set: {
+          password_hash: hashed,
+          password_reset_token: null,
+          password_reset_expiry: null,
+        },
+      };
 
       const updateUser = await userRepository.userFindOneUpdateQuery(
         filter,
         update
       );
 
-      updateUser &&
-        res.status(400).send({
+      if (updateUser) {
+        ctx.status = 400;
+        ctx.body = {
           success: true,
           message: "Password Reset Succesfully.",
-        });
+        };
+      }
     }
   } catch (error) {
-    errorLogger(error.message, req.originalUrl);
-    res.status(400).send({
+    // errorLogger(error.message, req.originalUrl);
+    ctx.status = 400;
+    ctx.body = {
       success: false,
       message: error.message,
-    });
+      error: JSON.stringify(error),
+    };
   }
 };
 
@@ -249,7 +252,6 @@ export default {
   signup,
   login,
   getAllUsers,
-  updateUsers,
   changePassword,
   forgotPassword,
   resetPassword,

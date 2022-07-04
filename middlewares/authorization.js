@@ -1,9 +1,9 @@
 import { userRepository } from "../repositories";
 import { jwtToken } from "../utils";
 
-const authorization = async (req, res, next) => {
+const auth = async (ctx, next) => {
   try {
-    const { authorization } = req.headers;
+    const { authorization } = ctx.headers;
     if (!authorization) throw new Error("Access denied. No token provided");
     const token =
       authorization && authorization.startsWith("Bearer ")
@@ -16,11 +16,12 @@ const authorization = async (req, res, next) => {
     const user = await userRepository.userQuery({ _id: verifyToken.sub });
     if (!user) throw new Error("No User Found With That Token");
 
-    req.currentUser = user;
-    next();
+    ctx.currentUser = user;
+    await next();
   } catch (error) {
-    res.status(403).send({ success: false, message: error.message });
+    ctx.status = 403;
+    ctx.body = { success: false, message: error.message };
   }
 };
 
-export default authorization;
+export default auth;

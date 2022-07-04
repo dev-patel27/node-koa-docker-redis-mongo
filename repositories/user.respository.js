@@ -1,15 +1,19 @@
 import { userModel } from "../models";
 
-const userQuery = async (filter) => {
+const userQuery = (filter) => {
   let query = {
-    $or: [{ name: filter.name }, { username: filter.username }],
+    $or: [
+      { first_name: filter.first_name },
+      { middle_name: filter.middle_name },
+      { last_name: filter.last_name },
+    ],
   };
   filter = filter && filter.orQuery ? query : filter;
   return userModel.findOne(filter);
 };
 
-const userFindOneUpdateQuery = async (filter, update) => {
-  let options = { new: true, fields: { password: 0 } };
+const userFindOneUpdateQuery = (filter, update) => {
+  let options = { new: true, fields: { password_hash: 0 } };
 
   return userModel.findOneAndUpdate(filter, update, options);
 };
@@ -27,14 +31,14 @@ const findAllQuery = async (query) => {
     whereClause = { ...whereClause, _id };
   }
   const users = await userModel
-    .find(whereClause, { password: 0 })
+    .find(whereClause, { password_hash: 0 })
     .skip(page > 0 ? +limit * (+page - 1) : 0)
     .limit(+limit || 20);
   const totalCount = await userModel.find().countDocuments();
   return { users, totalCount };
 };
 
-const updateOneQuery = async (filter, update) => {
+const updateOneQuery = (filter, update) => {
   return userModel.updateOne(filter, { $set: update });
 };
 

@@ -1,12 +1,17 @@
-import express, { json } from "express";
+import Koa from "koa";
+import koaBody from "koa-body";
+
 import userRoute from "./routes/user.route";
+import "./config/dbConnection";
 
-const server = express();
+const server = new Koa();
 
-server.use(json());
+server.use(koaBody());
 
-server.use("/api/users", userRoute);
+server.use(userRoute.routes());
+server.use(userRoute.allowedMethods());
 
+const PORT = process.env.PORT || 5001;
 server.listen(PORT, () => {
   console.log(`Server runing on ${PORT}`);
 });
