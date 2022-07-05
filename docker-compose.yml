@@ -1,21 +1,19 @@
+version: "2"
+services:
   node:
-    build: ./
+    build: .
     command: npm start
-    depends_on:
-      mongodb:
-        condition: service_healthy 
+    depends_on: 
+      - mongodb
     volumes:
       - .:/node
     ports:
-      - ["5001"]
+      - 5001:5001
 
   redis:
     image: redis:5.0-alpine3.10
     volumes:
       - "./healthchecks:/healthchecks"
-    healthcheck:
-      test: /healthchecks/redis.sh
-      interval: "5s"
     ports: ["6379"]
 
   mongodb:
@@ -24,6 +22,3 @@
       - 27017:27017
     volumes:
       - ~/apps/mongo:/data/db
-    environment:
-      - DATABASE_NAME=upskillNodejs
-      - CONNECTION_URL=mongodb://localhost:27017/
