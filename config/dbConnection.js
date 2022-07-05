@@ -1,6 +1,7 @@
 import { set, connect, connection } from "mongoose";
 import dotenv from "dotenv";
 dotenv.config({ path: "config/.env" });
+
 // Database Name & URL
 const DATABASE_NAME = process.env.DATABASE_NAME;
 export const CONNECTION_URL = process.env.CONNECTION_URL + DATABASE_NAME;

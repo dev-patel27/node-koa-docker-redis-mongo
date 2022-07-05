@@ -1,12 +1,12 @@
 version: "2"
 services:
-  node:
+  node_app:
     build: .
     command: npm start
     depends_on: 
       - mongodb
     volumes:
-      - .:/node
+      - ./home/node_app
     ports:
       - 5001:5001
 
