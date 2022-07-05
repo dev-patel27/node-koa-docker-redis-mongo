@@ -1,6 +1,12 @@
 import { userModel } from "../models";
 import { userRepository } from "../repositories";
-import { hashPassword, comparePassword, jwtToken, sendMail, generateRandomString } from "../utils";
+import {
+  hashPassword,
+  comparePassword,
+  jwtToken,
+  sendMail,
+  generateRandomString,
+} from "../utils";
 import { passwordAlgorithm, saltRounds } from "../utils/hashPassword";
 
 const signup = async (ctx, _next) => {
@@ -161,7 +167,9 @@ const forgotPassword = async (ctx, _next) => {
       await userRepository.updateOneQuery(filter, update);
 
       const html = `Click here to Reset Password :
-				${process.env.HOST}?token=${token}&expiredAt=${password_reset_expiry}
+				${
+          process.env.HOST + ":" + process.env.PORT
+        }/user-complete-password-reset?token=${token}&expiredAt=${password_reset_expiry}
 				Link will expire in 10 min`;
 
       const sendEmail = await sendMail(
@@ -170,7 +178,7 @@ const forgotPassword = async (ctx, _next) => {
         "RESET PASSWORD",
         html
       );
-      const sendGridErrors = get(sendEmail, ["errors"], []);
+      const sendGridErrors = sendEmail?.["errors"] ?? [];
       if (sendGridErrors.length) {
         const error = sendGridErrors.map((err) => err.message);
         throw new Error(`SendGrid Error: ${error}`);
