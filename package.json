@@ -15,7 +15,6 @@
     "koa-body": "^5.0.0",
     "koa-router": "^11.0.1",
     "mongoose": "^6.4.0",
-    "rate-limiter-flexible": "^2.3.7",
     "redis": "^4.1.1"
   },
   "devDependencies": {

@@ -12,15 +12,8 @@ import { passwordAlgorithm, saltRounds } from "../utils/hashPassword";
 const signup = async (ctx, _next) => {
   try {
     let { body } = ctx.request;
-    const { password, email } = body;
-    const query = { email };
-
-    const checkExistingUser = await userRepository.userQuery(query);
-
-    if (checkExistingUser) throw new Error("User Credentials Already In Use");
-
+    const { password } = body;
     const hashed = await hashPassword(password);
-
     const data = {
       ...body,
       password_hash: hashed,
@@ -54,13 +47,13 @@ const login = async (ctx, _next) => {
   try {
     const { body } = ctx.request;
     const { email, password } = body;
-
     const checkUser = await userRepository.userQuery({ email });
-
-    if (!checkUser)
+    
+    if (!checkUser) {
       throw new Error(
         `The email you've entered does not belong to an account. Please Register with Us.`
       );
+    }
 
     if (checkUser) {
       const { _id, first_name, last_name } = checkUser;
@@ -86,7 +79,7 @@ const login = async (ctx, _next) => {
     ctx.status = 400;
     ctx.body = {
       success: false,
-      message: error.message,
+      message: error?.message,
       error: JSON.stringify(error),
     };
   }
@@ -157,7 +150,6 @@ const forgotPassword = async (ctx, _next) => {
 
     if (checkUser) {
       const token = generateRandomString(21);
-
       const date = new Date();
       const password_reset_expiry = date.getTime() + 60000; // 10 Min
 
@@ -166,27 +158,26 @@ const forgotPassword = async (ctx, _next) => {
 
       await userRepository.updateOneQuery(filter, update);
 
-      const html = `Click here to Reset Password :
-				${
-          process.env.HOST + ":" + process.env.PORT
-        }/user-complete-password-reset?token=${token}&expiredAt=${password_reset_expiry}
-				Link will expire in 10 min`;
+      const html = `Click here to Reset Password : ${
+        process.env.HOST + ":" + process.env.PORT
+      }/api/user-complete-password-reset?token=${token}&expiredAt=${password_reset_expiry} Link will expire in 10 min`;
 
-      const sendEmail = await sendMail(
-        email,
-        process.env.SENDGRID_EMAIL,
-        "RESET PASSWORD",
-        html
-      );
-      const sendGridErrors = sendEmail?.["errors"] ?? [];
-      if (sendGridErrors.length) {
-        const error = sendGridErrors.map((err) => err.message);
-        throw new Error(`SendGrid Error: ${error}`);
-      }
+      // const sendEmail = await sendMail(
+      //   email,
+      //   process.env.SENDGRID_EMAIL,
+      //   "RESET PASSWORD",
+      //   html
+      // );
+      // const sendGridErrors = sendEmail?.["errors"] ?? [];
+      // if (sendGridErrors.length) {
+      //   const error = sendGridErrors.map((err) => err.message);
+      //   throw new Error(`SendGrid Error: ${error}`);
+      // }
       ctx.status = 200;
       ctx.body = {
         success: true,
         message: `Password Reset Link Sent Successfully at ${email}`,
+        data: html,
       };
     }
   } catch (error) {
@@ -210,7 +201,6 @@ const resetPassword = async (ctx, _next) => {
 
     // Check token expired or not
     const checkTokenExpiry = expiredAt < Date.now();
-
     if (checkTokenExpiry) throw new Error("Link Expired");
 
     // Check token exists or not && token belongs to that user
@@ -222,8 +212,7 @@ const resetPassword = async (ctx, _next) => {
 
     if (checkUserToken && !checkTokenExpiry) {
       const hashed = await hashPassword(password);
-
-      const filter = { _id };
+      const filter = { password_reset_token: token };
       const update = {
         $set: {
           password_hash: hashed,
@@ -236,12 +225,11 @@ const resetPassword = async (ctx, _next) => {
         filter,
         update
       );
-
       if (updateUser) {
         ctx.status = 400;
         ctx.body = {
           success: true,
-          message: "Password Reset Succesfully.",
+          message: "Password Reset Successfully...",
         };
       }
     }

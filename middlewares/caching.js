@@ -1,54 +1,63 @@
-import { RateLimiterRedis } from "rate-limiter-flexible";
-import { createClient } from "redis";
+import { createClient } from 'redis';
+import { userRepository } from '../repositories';
 
 const caching = async (ctx, next) => {
-  const redisClient = await createClient({
-    enable_offline_queue: true,
-    host: process.env.REDIS_HOST,
-    port: 6379,
-  });
+	let { body } = ctx.request;
+	const { email } = body;
 
-  await redisClient.connect();
+	const checkExistingUser = await userRepository.userQuery({ email });
+	if (checkExistingUser) {
+		ctx.status = 400;
+		ctx.body = {
+			success: false,
+			message: 'User Credentials Already In Use',
+		};
+		return true;
+	}
 
-  redisClient.on("error", (err) => {
-    console.error("err::>>", err);
-  });
+	const redisClient = await createClient({
+		enable_offline_queue: false,
+		host: `${process.env.REDIS_HOST}`,
+		port: 6379,
+	});
+	await redisClient.connect();
 
-  redisClient.on("connect", (res) => {
-    console.log(res, "connected....");
-  });
+	redisClient.on('error', (err) => {
+		console.error('Error::>', err);
+	});
 
-  const opts = {
-    storeClient: redisClient,
-    points: 5, // Number of points
-    duration: 5, // Per second(s)
-    // Custom
-    blockDuration: 0, // Do not block if consumed more than points
-    keyPrefix: "rlflx", // must be unique for limiters with different purpose
-  };
+	redisClient.on('connect', () => {
+		console.log('redis connected...');
+	});
 
-  const rateLimiterRedis = new RateLimiterRedis(opts);
-  rateLimiterRedis
-    .consume(ctx.request.ip)
-    .then((rateLimiterRes) => {
-      console.log("rateLimiterRes::>>", rateLimiterRes);
-      next();
-      // ... Some app logic here ...
-    })
-    .catch((rejRes) => {
-      if (rejRes instanceof Error) {
-        // Some Redis error
-        // Never happen if `insuranceLimiter` set up
-        // Decide what to do with it in other case
-      } else {
-        // Can't consume
-        // If there is no error, rateLimiterRedis promise rejected with number of ms before next request allowed
-        const secs = Math.round(rejRes.msBeforeNext / 1000) || 1;
-        ctx.set = { "Retry-After": String(secs) };
-        ctx.status = 429;
-        ctx.body = "Too Many Requests";
-      }
-    });
+	async function isOverLimit(ip) {
+		let res;
+		try {
+			res = await redisClient.incr(ip);
+		} catch (err) {
+			console.error('isOverLimit: could not increment key');
+			throw err;
+		}
+		console.log(`Requested from same IP ${res} times`);
+		if (res > (+process.env.MAX_REGISTRATION_ALLOWED_PER_IP || 5)) {
+			return true;
+		}
+		redisClient.expire(ip, 86400);
+	}
+
+	// check rate limit
+	let overLimit = await isOverLimit(ctx?.request?.ip);
+	if (overLimit) {
+		ctx.status = 429;
+		ctx.body = {
+			success: false,
+			message: 'Too many requests - try again later',
+		};
+		return true;
+	} else {
+		console.log('Accessed the precious resources!');
+		await next();
+	}
 };
 
 export default caching;
