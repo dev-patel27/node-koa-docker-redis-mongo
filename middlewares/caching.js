@@ -1,13 +1,13 @@
 import { RateLimiterRedis } from "rate-limiter-flexible";
 import { createClient } from "redis";
 
-const redisClient = createClient({
-  enable_offline_queue: false,
-  host: "localhost",
-  port: 6379,
-});
-
 const caching = async (ctx, next) => {
+  const redisClient = await createClient({
+    enable_offline_queue: true,
+    host: process.env.REDIS_HOST,
+    port: 6379,
+  });
+
   await redisClient.connect();
 
   redisClient.on("error", (err) => {

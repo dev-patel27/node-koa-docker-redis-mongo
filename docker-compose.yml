@@ -3,22 +3,34 @@ services:
   node_app:
     build: .
     command: npm start
-    depends_on: 
-      - mongodb
+    restart: always
+    depends_on:
+      - db
+      - myredis
     volumes:
-      - ./home/node_app
+      - ./home/node_app/
+      - nodemodules:/node_modules
     ports:
       - 5001:5001
+    links:
+      - db
+      - myredis
 
-  redis:
-    image: redis:5.0-alpine3.10
+  myredis:
+    container_name: myredis
+    image: redis:latest
     volumes:
       - "./healthchecks:/healthchecks"
     ports: ["6379"]
 
-  mongodb:
+  db:
+    container_name: db
     image: mongo:5.0
     ports:
-      - 27017:27017
+      - 27018:27017
     volumes:
-      - ~/apps/mongo:/data/db
+      - mongo-db:/data/db
+
+volumes:
+  mongo-db:
+  nodemodules: {}
