@@ -6,17 +6,16 @@ services:
     restart: always
     depends_on:
       - db
-      - myredis
+      - redis
     volumes:
       - ./home/node_app/
-      - nodemodules:/node_modules
     ports:
       - 5001:5001
     links:
       - db
-      - myredis
+      - redis
 
-  myredis:
+  redis:
     image: redis:7.0.2-alpine
     volumes:
       - "./healthchecks:/healthchecks"
@@ -31,4 +30,3 @@ services:
 
 volumes:
   mongo-db:
-  nodemodules: {}
