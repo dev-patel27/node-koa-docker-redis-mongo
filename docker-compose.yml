@@ -17,14 +17,12 @@ services:
       - myredis
 
   myredis:
-    container_name: myredis
-    image: redis:latest
+    image: redis:7.0.2-alpine
     volumes:
       - "./healthchecks:/healthchecks"
     ports: ["6379"]
 
   db:
-    container_name: db
     image: mongo:5.0
     ports:
       - 27018:27017

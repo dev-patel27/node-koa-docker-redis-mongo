@@ -1,5 +1,6 @@
 import { createClient } from 'redis';
 import { userRepository } from '../repositories';
+import { logger } from '../utils';
 
 const caching = async (ctx, next) => {
 	let { body } = ctx.request;
@@ -16,9 +17,7 @@ const caching = async (ctx, next) => {
 	}
 
 	const redisClient = await createClient({
-		enable_offline_queue: false,
-		host: `${process.env.REDIS_HOST}`,
-		port: 6379,
+		url: `redis://${process.env.REDIS_HOST}:6379`
 	});
 	await redisClient.connect();
 
@@ -38,6 +37,7 @@ const caching = async (ctx, next) => {
 			console.error('isOverLimit: could not increment key');
 			throw err;
 		}
+		logger("infoLog", `Requested from same IP ${res} times`, "", ip);
 		console.log(`Requested from same IP ${res} times`);
 		if (res > (+process.env.MAX_REGISTRATION_ALLOWED_PER_IP || 5)) {
 			return true;
@@ -55,6 +55,12 @@ const caching = async (ctx, next) => {
 		};
 		return true;
 	} else {
+		logger(
+			"infoLog",
+			`Accessed the precious resources!`,
+			ctx?.request?.originalUrl,
+			ctx?.request?.ip
+		);
 		console.log('Accessed the precious resources!');
 		await next();
 	}

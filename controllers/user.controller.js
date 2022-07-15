@@ -4,8 +4,9 @@ import {
   hashPassword,
   comparePassword,
   jwtToken,
-  sendMail,
+  // sendMail,
   generateRandomString,
+  logger,
 } from "../utils";
 import { passwordAlgorithm, saltRounds } from "../utils/hashPassword";
 
@@ -76,6 +77,12 @@ const login = async (ctx, _next) => {
       }
     }
   } catch (error) {
+    logger(
+      "errorLog",
+      error?.message,
+      ctx.request?.originalUrl,
+      ctx.request?.ip
+    );
     ctx.status = 400;
     ctx.body = {
       success: false,
@@ -97,7 +104,12 @@ const getAllUsers = async (ctx, _next) => {
       totalCount,
     };
   } catch (error) {
-    console.log(error);
+    logger(
+      "errorLog",
+      error?.message,
+      ctx.request?.originalUrl,
+      ctx.request?.ip
+    );
     ctx.status = 400;
     ctx.body = {
       success: false,
@@ -131,7 +143,12 @@ const changePassword = async (ctx, _next) => {
       message: "Password Updated Successfully.",
     };
   } catch (error) {
-    // errorLogger(error.message, req.originalUrl);
+    logger(
+      "errorLog",
+      error?.message,
+      ctx.request?.originalUrl,
+      ctx.request?.ip
+    );
     ctx.status = 400;
     ctx.body = {
       success: false,
@@ -151,7 +168,7 @@ const forgotPassword = async (ctx, _next) => {
     if (checkUser) {
       const token = generateRandomString(21);
       const date = new Date();
-      const password_reset_expiry = date.getTime() + 60000; // 10 Min
+      const password_reset_expiry = date.getTime() + 600000; // 10 Min
 
       const filter = { email };
       const update = { password_reset_token: token, password_reset_expiry };
@@ -181,7 +198,12 @@ const forgotPassword = async (ctx, _next) => {
       };
     }
   } catch (error) {
-    // errorLogger(error.message, req.originalUrl);
+    logger(
+      "errorLog",
+      error?.message,
+      ctx.request?.originalUrl,
+      ctx.request?.ip
+    );
     ctx.status = 400;
     ctx.body = {
       success: false,
@@ -234,7 +256,12 @@ const resetPassword = async (ctx, _next) => {
       }
     }
   } catch (error) {
-    // errorLogger(error.message, req.originalUrl);
+    logger(
+      "errorLog",
+      error?.message,
+      ctx.request?.originalUrl,
+      ctx.request?.ip
+    );
     ctx.status = 400;
     ctx.body = {
       success: false,

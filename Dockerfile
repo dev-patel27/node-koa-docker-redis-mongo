@@ -5,4 +5,3 @@ RUN yarn
 COPY --chown=node:node . .
 EXPOSE 5001
 CMD [ "yarn", "start" ]
-# CMD ["nodemon", "--exec", "npm", "run", "docker-start"]

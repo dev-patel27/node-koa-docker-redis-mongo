@@ -15,7 +15,8 @@
     "koa-body": "^5.0.0",
     "koa-router": "^11.0.1",
     "mongoose": "^6.4.0",
-    "redis": "^4.1.1"
+    "redis": "^4.1.1",
+    "winston": "^3.8.1"
   },
   "devDependencies": {
     "@babel/cli": "^7.14.5",
