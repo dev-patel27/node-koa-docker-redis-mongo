@@ -78,10 +78,10 @@ const login = async (ctx, _next) => {
     }
   } catch (error) {
     logger(
-      "errorLog",
       error?.message,
       ctx.request?.originalUrl,
-      ctx.request?.ip
+      ctx.request?.ip,
+      "errorLog",
     );
     ctx.status = 400;
     ctx.body = {
@@ -105,10 +105,10 @@ const getAllUsers = async (ctx, _next) => {
     };
   } catch (error) {
     logger(
-      "errorLog",
       error?.message,
       ctx.request?.originalUrl,
-      ctx.request?.ip
+      ctx.request?.ip,
+      "errorLog",
     );
     ctx.status = 400;
     ctx.body = {
@@ -144,10 +144,10 @@ const changePassword = async (ctx, _next) => {
     };
   } catch (error) {
     logger(
-      "errorLog",
       error?.message,
       ctx.request?.originalUrl,
-      ctx.request?.ip
+      ctx.request?.ip,
+      "errorLog",
     );
     ctx.status = 400;
     ctx.body = {
@@ -199,10 +199,10 @@ const forgotPassword = async (ctx, _next) => {
     }
   } catch (error) {
     logger(
-      "errorLog",
       error?.message,
       ctx.request?.originalUrl,
-      ctx.request?.ip
+      ctx.request?.ip,
+      "errorLog",
     );
     ctx.status = 400;
     ctx.body = {
@@ -257,10 +257,10 @@ const resetPassword = async (ctx, _next) => {
     }
   } catch (error) {
     logger(
-      "errorLog",
       error?.message,
       ctx.request?.originalUrl,
-      ctx.request?.ip
+      ctx.request?.ip,
+      "errorLog",
     );
     ctx.status = 400;
     ctx.body = {
