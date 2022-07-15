@@ -11,4 +11,5 @@ export default router
   .post("/login", userController.login)
   .get("/users", auth, userController.getAllUsers)
   .post("/user-init-password-reset", userController.forgotPassword)
-  .post("/user-complete-password-reset", userController.resetPassword);
+  .post("/user-complete-password-reset", userController.resetPassword)
+  .put("/user-verified-email", userController.updateEmailStatus);

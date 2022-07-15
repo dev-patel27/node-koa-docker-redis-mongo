@@ -271,10 +271,40 @@ const resetPassword = async (ctx, _next) => {
   }
 };
 
+const updateEmailStatus = async (ctx, _next) => {
+  try {
+    const { body } = ctx.request;
+    const { email } = body;
+    const update = { status: "verified" };
+
+    await userRepository.updateOneQuery({ email }, update);
+
+    ctx.status = 200;
+    ctx.body = {
+      success: true,
+      message: "Status Updated Successfully.",
+    };
+  } catch (error) {
+    logger(
+      error?.message,
+      ctx.request?.originalUrl,
+      ctx.request?.ip,
+      "errorLog",
+    );
+    ctx.status = 400;
+    ctx.body = {
+      success: false,
+      message: error.message,
+      error: JSON.stringify(error),
+    };
+  }
+}
+
 export default {
   signup,
   login,
   getAllUsers,
+  updateEmailStatus,
   changePassword,
   forgotPassword,
   resetPassword,
